@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 '''
-executable of ants package, parsing arguments from command line
+executable of WhosOnline package, parsing arguments from command line
 '''
 
 # builtin
@@ -29,40 +29,18 @@ import sys
 import time
 
 # custom
-import ants.pygame_main as pygame_main
+import whosonline.netcheck as netcheck
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-g',
-        '--gridsize',
-        help='Size of ants grid. Default 25',
-        type=int,
-        default=25
-    )
-    parser.add_argument(
-        '-s',
-        '--startants',
-        help='Number of ants spawned at start. Default 25',
-        type=int,
-        default=25
-    )
-
-    parser.add_argument(
-        '-f',
-        '--food',
-        help='Number of food fields at start. Default 100',
-        type=int,
-        default=100
-    )
-
-    parser.add_argument(
-        '--nospawn',
-        help='Prevent spawning new ants',
-        action='store_true',
-        default=False
+        '-n',
+        '--network',
+        help='Network address to be scanned',
+        type=str,
+        default='192.168.88.0/24'
     )
 
     args = parser.parse_args()
-    pygame_main.main(args)
+    netcheck.netcheck_main(args.network)
