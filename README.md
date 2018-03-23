@@ -1,3 +1,5 @@
 **WhosOnline**
 
-A simple tool to detect computers in local network
+Interactive network monitoring shell.
+
+Also contains other fun stuff.

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
-# netcheck.py - simple module to check local network for pingable devices
+# netcheck.py - simple module to check local network for (ar)pingable devices
 #
 # Copyright (c) 2017 Lars Bergmann
 #
@@ -24,13 +24,12 @@
 import ipaddress
 import socket
 import subprocess
+import asyncio
+
 # import os
 
-import whosonline.logfacility as logfacility
-LOGGER = logfacility.build_logger()
-
-# some hosts may not have to be checked
-OMIT_HOSTS = ['fritz', ]
+# some hosts may not have to be checked, e.g. routers
+OMIT_HOSTS = ['fritz', 'Teleball', ]
 
 
 def safe_syscall(cmds, raisemode=False):
@@ -86,10 +85,10 @@ def get_netdevice(network_address):
             return route['Interface']
 
 
-def notifiy(hostname, status):
+def notify(head, message):
     '''using notify-send shell command to visualize online status nicely. Other
     methods of notification (e.g. mail) may be implemented here.'''
-    cmd = ['notify-send', hostname, 'Online' if status is True else 'Offline']
+    cmd = ['notify-send', head, message]
     returncode, output = safe_syscall(cmd)
 
 
@@ -129,6 +128,8 @@ def get_hostname(ip_address):
 
 def get_ips(network_obj):
     '''Get ip objects from network. Filter useless adresses'''
+    if isinstance(network_obj, str):
+        network_obj = ipaddress.ip_network(network_obj, strict=True)
     network_adress = network_obj.network_address
     broadcast_address = network_obj.broadcast_address
     for address_obj in network_obj:
@@ -136,12 +137,23 @@ def get_ips(network_obj):
             continue
         if address_obj == broadcast_address:
             continue
-        yield address_obj
+        yield str(address_obj)
+
+
+def get_hostnames(network_obj):
+    myhost = socket.gethostname()
+    for ip in get_ips(network_obj):
+        host = get_hostname(ip)
+        if host and host != myhost:
+            yield ip, host
 
 
 def netcheck_main(network):
     '''Main function of netcheck module called from executable
     '''
+
+    # import logfacility
+    # LOGGER = logfacility.build_logger()
 
     # save results to show notifications if something changes
     results = {}
@@ -167,10 +179,52 @@ def netcheck_main(network):
             hostname = get_hostname(ip_str)
             if hostname and hostname not in OMIT_HOSTS:
                 last_result = results.get(hostname)
-                ping_result = arping(ip_str, netdevice)  # or use ping(hostname)
-                # notify if status changes
+                ping_result = arping(ip_str, netdevice)  # or ping(hostname)
+                # notify if status changes --> DEACTIVATED!
                 if (last_result is not None) and (last_result != ping_result):
-                    notifiy(hostname, ping_result)
+                    notify(hostname, 'Online' if ping_result else 'Offline')
                 # save new result
+                if hostname not in results:
+                    notify('New host found!', hostname)
                 results[hostname] = ping_result
-                LOGGER.info('Host %s online: %s' % (hostname, ping_result))
+                # LOGGER.info('Host %s online: %s' % (hostname, ping_result))
+                print('Host %s online: %s' % (hostname, ping_result))
+
+
+async def netcheck_loop(network):
+    '''
+    ASYNC VERSION of netcheck main
+    Main function of netcheck module called from executable
+    '''
+
+    # import logfacility
+    # LOGGER = logfacility.build_logger()
+
+    # save results to show notifications if something changes
+    results = {}
+
+    # set up network object and build ip strings from it using get_ips filter
+    network_obj = ipaddress.ip_network(network, strict=True)
+    ip_addresses = [str(address_obj) for address_obj in get_ips(network_obj)]
+
+    # get the network device responsible for given network
+    netdevice = get_netdevice(network.split('/')[0])  # cut off cidr netmask
+
+    # get local hostname to add to OMIT_HOSTS list
+    local_hostname = socket.gethostname()
+    OMIT_HOSTS.append(local_hostname)
+
+    # abort if not device can be found
+    assert netdevice, "Unable to find network device belonging to network %s" % network
+    print('Device associated to network %s : %s' % (network, netdevice))
+
+    # main loop
+    while True:
+        for ip_str in ip_addresses:
+            hostname = get_hostname(ip_str)
+            if hostname and hostname not in OMIT_HOSTS:
+                last_result = results.get(hostname)
+                ping_result = arping(ip_str, netdevice)  # or ping(hostname)
+                results[hostname] = ping_result
+                print('Host %s online: %s' % (hostname, ping_result))
+                await asyncio.sleep(2)

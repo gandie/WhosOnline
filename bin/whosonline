@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2017 Lars Bergmann
@@ -29,7 +29,8 @@ import sys
 import time
 
 # custom
-import whosonline.netcheck as netcheck
+# import whosonline.netcheck as netcheck
+import whosonline.asyncio_prompt as asyncio_prompt
 
 if __name__ == '__main__':
 
@@ -43,4 +44,5 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    netcheck.netcheck_main(args.network)
+    # netcheck.netcheck_main(args.network)
+    asyncio_prompt.main(network=args.network)

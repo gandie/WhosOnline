@@ -23,13 +23,16 @@ import warnings
 
 # PIP
 # compatibility! python-systemd lib strongly depends on systemd
+'''
 try:
     import systemd.journal
     use_journal = True
 except ImportError:
     # logging to file is possible if desired by calling build_logger with a path
     warnings.warn('Unable to log to journal!')
-    use_journal = False
+'''
+
+use_journal = False
 
 
 def build_logger(path=None):
