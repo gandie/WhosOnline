@@ -69,6 +69,8 @@ welcome = '''
                          YVYVYYYYYItti+=:,,,,,:::::;
                          YRVI+==;;;;;:,,,,,,,:::::::
 
+         "From great power comes great responsibility."  -- Mr. Spock
+
 
 WhosOnline -- interactive wrapper arround nmap and other fun stuff
 '''
