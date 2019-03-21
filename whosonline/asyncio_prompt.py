@@ -16,12 +16,13 @@ possible. ::
     sys.stdout = app.stdout_proxy()
 """
 
-from prompt_toolkit.shortcuts import Prompt
+from prompt_toolkit.shortcuts import PromptSession
 from prompt_toolkit.eventloop.defaults import use_asyncio_event_loop
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit import print_formatted_text
-from prompt_toolkit.contrib.completers import WordCompleter
+# from prompt_toolkit.contrib.completers import WordCompleter
+from prompt_toolkit.completion.word_completer import WordCompleter
 
 import asyncio
 import pprint
@@ -164,12 +165,12 @@ async def probe_host(hostname):
     print()
 
 
-async def nmap_scan_loop(network):
+async def nmap_scan_loop(network, no_dns):
     """
     Coroutine calling fast nmap scan for all known hosts
     """
     while True:
-        ip_hosts = await get_hosts(network)
+        ip_hosts = await get_hosts(network, no_dns)
         print('%s hosts in network %s' % (len(ip_hosts), network))
         for ip, host_d in ip_hosts.items():
             scan_result = await nmap_scan(ip)
@@ -198,10 +199,7 @@ async def arping(ip, interface, timeout=3, frame_count=3):
 
     retcode, output = await syscall(command.split())
 
-    if retcode == 0:
-        return True
-    else:
-        return False
+    return retcode == 0
 
 
 async def netcheck_loop(hosts_d, interface):
@@ -215,18 +213,19 @@ async def netcheck_loop(hosts_d, interface):
             await asyncio.sleep(1)
 
 
-async def get_hosts(network):
+async def get_hosts(network, no_dns):
     hosts = dict(
-        (ip, {'hostname': hostname}) for ip, hostname in netcheck.get_hostnames(network)
+        (ip, {'hostname': hostname})
+        for ip, hostname in netcheck.get_hostnames(network, filter_hosts=not no_dns)
     )
     return hosts
 
 
-async def interactive_shell(loop, network, hosts_d, interface):
+async def interactive_shell(loop, network, hosts_d, interface, no_dns):
     """
     """
     # Create Prompt.
-    prompt = Prompt(
+    prompt = PromptSession(
         [('ansicyan', '(WhosOnline)>>> ')],
         completer=whosonline_completer
     )
@@ -282,7 +281,7 @@ async def interactive_shell(loop, network, hosts_d, interface):
                     continue
                 fancy_print('Sheduling fast_nmap_loop to check for hosts online/offline')
                 tasks['fast_nmap_loop'] = asyncio.gather(
-                    nmap_scan_loop(network)
+                    nmap_scan_loop(network, no_dns)
                     # return_exceptions=True
                 )
             elif result == 'annoy_calendar':
@@ -332,7 +331,7 @@ def fancy_print(text, color='ansiyellow'):
     print_formatted_text(FormattedText([(color, '\n' + text)]))
 
 
-def main(network):
+def main(network, no_dns, f_interface):
     # Tell prompt_toolkit to use the asyncio event loop.
     try:
         with patch_stdout():
@@ -341,17 +340,24 @@ def main(network):
             use_asyncio_event_loop()
 
             interface = netcheck.get_netdevice(network.split('/')[0])  # cut off cidr netmask
-
+            if not interface:
+                if f_interface:
+                    interface = f_interface
+                else:
+                    raise Exception(
+                        'Can not continue without interface. Try to specify using "-i" argument'
+                    )
+            print('interface is %s' % interface)
             # SETUP SHELL
             # add hostnames add completer
             hosts_d = {
-                ip: hostname for ip, hostname in netcheck.get_hostnames(network)
+                ip: hostname for ip, hostname in netcheck.get_hostnames(network, filter_hosts=not no_dns)
             }
             whosonline_completer.words += list(hosts_d.values())
 
             # start shell
             shell_task = asyncio.ensure_future(
-                interactive_shell(loop, network, hosts_d, interface)
+                interactive_shell(loop, network, hosts_d, interface, no_dns)
             )
             loop.run_until_complete(shell_task)
     except Exception as e:

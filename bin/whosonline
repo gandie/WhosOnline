@@ -43,6 +43,25 @@ if __name__ == '__main__':
         default='192.168.88.0/24'
     )
 
+    parser.add_argument(
+        '--no-dns',
+        help='Do not rely on dns, scan by ip',
+        action='store_true',
+        default=False
+    )
+
+    parser.add_argument(
+        '-i',
+        '--interface',
+        help='Fallback interface, may be used if interface cannot be detected',
+        type=str,
+        default=''
+    )
+
     args = parser.parse_args()
     # netcheck.netcheck_main(args.network)
-    asyncio_prompt.main(network=args.network)
+    asyncio_prompt.main(
+        network=args.network,
+        no_dns=args.no_dns,
+        f_interface=args.interface
+    )

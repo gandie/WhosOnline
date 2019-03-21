@@ -140,12 +140,15 @@ def get_ips(network_obj):
         yield str(address_obj)
 
 
-def get_hostnames(network_obj):
+def get_hostnames(network_obj, filter_hosts=True):
     myhost = socket.gethostname()
     for ip in get_ips(network_obj):
         host = get_hostname(ip)
-        if host and host != myhost:
-            yield ip, host
+        if filter_hosts:
+            if host and host != myhost:
+                yield ip, host
+        else:
+            yield ip, ip
 
 
 def netcheck_main(network):
