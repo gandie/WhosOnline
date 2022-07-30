@@ -17,11 +17,9 @@ possible. ::
 """
 
 from prompt_toolkit.shortcuts import PromptSession
-from prompt_toolkit.eventloop.defaults import use_asyncio_event_loop
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit import print_formatted_text
-# from prompt_toolkit.contrib.completers import WordCompleter
 from prompt_toolkit.completion.word_completer import WordCompleter
 
 import asyncio
@@ -243,7 +241,7 @@ async def interactive_shell(loop, network, hosts_d, interface, no_dns):
 
     while not done:
         try:
-            result = await prompt.prompt(async_=True)
+            result = await prompt.prompt_async()
             if result == 'exit':
                 fancy_print('Exiting shell, aborting tasks...')
                 done = True
@@ -337,7 +335,6 @@ def main(network, no_dns, f_interface):
         with patch_stdout():
 
             loop = asyncio.get_event_loop()
-            use_asyncio_event_loop()
 
             interface = netcheck.get_netdevice(network.split('/')[0])  # cut off cidr netmask
             if not interface:
@@ -360,6 +357,7 @@ def main(network, no_dns, f_interface):
                 interactive_shell(loop, network, hosts_d, interface, no_dns)
             )
             loop.run_until_complete(shell_task)
+
     except Exception as e:
         print(e)
         # pass  # stfu
