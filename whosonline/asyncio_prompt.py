@@ -22,6 +22,7 @@ from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.completion.word_completer import WordCompleter
 
+import sys
 import asyncio
 import pprint
 import random
@@ -334,7 +335,11 @@ def main(network, no_dns, f_interface):
     try:
         with patch_stdout():
 
-            loop = asyncio.get_event_loop()
+            if sys.version_info >= (3, 10):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            else:
+                loop = asyncio.get_event_loop()
 
             interface = netcheck.get_netdevice(network.split('/')[0])  # cut off cidr netmask
             if not interface:
